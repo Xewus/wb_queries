@@ -47,8 +47,11 @@ async def search_message(msg: Message):
     if len(query) < 2 or not query[0].isnumeric():
         await msg.answer(TXT_ERROR_QUERY)
         return
+
     art, query = int(query[0]), query[1]
-    data = await WbProduct.get_place_on_page(int(art), query)
+    wb_product = WbProduct(art)
+    data = await wb_product.get_place_on_page(query)
+
     if isinstance(data, dict):
         text = TXT_ANSWER_WITH_DATA.format_map(data)
     elif isinstance(data, int):

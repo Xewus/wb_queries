@@ -9,11 +9,8 @@ sys.path.append(str(root))
 from time import time
 
 from src.core.requestsing import MarketRequest
-from src.markets.selen import Cooker
-from src.settings import wb_config
+from src.markets.links import PAGINATION_PAGE, PRODUCT_JSON_CARD
 
-PRODUCT_JSON_CARD = wb_config.PRODUCT_JSON_CARD
-PAGINATION_PAGE = wb_config.PAGINATION_PAGE
 
 
 class WbProduct:
@@ -94,12 +91,12 @@ class WbProduct:
     }
     """
     base_url = 'https://www.wildberries.ru/'
-    start = time()
 
     def __init__(self, id: int | str) -> None:
         if isinstance(id, str) and not id.isdecimal():
             raise ValueError('`~id %s` is not a number')
         self.id = id
+        self.start = time()
 
     async def __set_params(self) -> None:
         """Get the product params from a remote server and set into parameter.
@@ -149,10 +146,8 @@ class WbProduct:
         """
         return await self.__get_product_param('name')
 
-    @classmethod
     async def get_place_on_page(
-        cls: 'WbProduct',
-        product_id: int | str,
+        self,
         query: str,
         sorting: str = 'popular',
         resultset: str = 'catalog'
@@ -160,7 +155,6 @@ class WbProduct:
         """Get placement on the page.
 
         #### Args:
-        - product_id: Product article.
         - query: Search query.
 
         #### Returns:
@@ -169,9 +163,14 @@ class WbProduct:
         """
         page = 1
         amount = 0
-        cooker = Cooker(cls.base_url)
-        url = await cooker.update_url(PAGINATION_PAGE, query)
 
+        g = {
+            'dest': '-1216601,-337422,-1114902,-1198055',
+            'query': query,
+            'resultset':resultset,
+            'sort': sorting
+        }
+        url = PAGINATION_PAGE.format_map(g)
         while True:
             query_url = url + f'&{page=}' if page > 1 else url
             data = await MarketRequest.GET(url=query_url)
@@ -179,35 +178,35 @@ class WbProduct:
             try:
                 data = data['data']['products']
             except (KeyError, TypeError) as err:
-                print('Потрачено времени: ', time() - cls.start)
+                print('Потрачено времени: ', time() - self.start)
                 print(err)
                 print(data)
                 return amount
 
             if not data:
-                print('Потрачено времени: ', time() - cls.start)
+                print('Потрачено времени: ', time() - self.start)
                 return amount
 
             for place, product in enumerate(data, 1):
-                if product['id'] == product_id:
-                    print('Потрачено времени: ', time() - cls.start)
+                if product['id'] == self.id:
+                    print('Потрачено времени: ', time() - self.start)
                     return {
-                        'product_id': product_id,
+                        'product_id': self.id,
                         'name': product['name'],
                         'start_price': product['priceU'] / 100,
                         'sale_price': product['salePriceU'] / 100,
                         'page': page,
                         'place': place,
-                        'rank': (page - 1) * 100 + place
+                        'rank': (page - 1) * 100 + place,
+                        'time': int(time() - self.start)
                     }
-                print(product['id'], product['name'], cls.counter_latency)
 
             page += 1
             amount += len(data)
 
 
 async def test():
-    s = time.time()
+    s = time()
     # p = WbProduct(124_256_512)
     # assert await p.get_product_name() == 'Конструктор в чупсе "Полиция"'
     # print('\nКлючевое слово: zarina')
@@ -216,9 +215,9 @@ async def test():
     # print(*d.items(), sep='\n')
     print('\nКлючевое слово: Омега 3')
     print('ID Вашего продукта: 37260674')
-    d = await WbProduct.get_place_on_page(37260674, 'Омега 3', 'priceup')
+    d = await WbProduct(37260674).get_place_on_page('Омега 3', 'priceup')
     print(d, sep='\n')
-    print('Время запроса: ', time.time() - s)
+    print('Время запроса: ', time() - s)
 
 
 if __name__ == '__main__':
