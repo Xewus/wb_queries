@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "wb-queries"
+version = "0.1.0"
+description = ""
+authors = ["Xewus <xewuss@yandex.ru>"]
+readme = "README.md"
+packages = [{include = "wb_queries"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
