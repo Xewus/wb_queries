@@ -8,7 +8,7 @@ class Settings(BaseSettings):
         env_file_encoding = 'utf-8'
 
 class BotSettings(Settings):
-    bot_token: SecretStr
+    TOKEN: SecretStr
 
 
 class WdCettings(Settings):

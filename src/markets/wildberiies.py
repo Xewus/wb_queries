@@ -9,7 +9,7 @@ root = Path(__file__).parent.parent.parent.resolve()
 sys.path.append(str(root))
 
 from src.core.requestsing import MarketRequest
-from src.markets.selen import get_wb_cookies
+from src.markets.selen import Cooker
 from src.settings import wb_config
 
 PRODUCT_JSON_CARD = wb_config.PRODUCT_JSON_CARD
@@ -147,50 +147,6 @@ class WbProduct:
         """
         return await self.__get_product_param('name')
 
-    @staticmethod
-    async def update_url(
-        url: str,
-        cookies: dict,
-        queries: dict | None = None
-    ) -> str:
-        query_keys = {
-            'appType': 1,
-            'couponsGeo': '12,7,3,6,5,18,21',
-            'curr': 'rub',
-            'dest': '-1216601,-337422,-1114902,-1198055,-0000',
-            'emp': 0,
-            'lang': 'ru',
-            'locale': 'ru',
-            'pricemarginCoeff': 1.0,
-            'query': '',
-            'reg': 0,
-            'regions': '80,64,83,4,38,33,70,82,69,68,86,30,40,48,1,22,66,31',
-            'resultset': 'catalog',
-            'sort': 'popular',
-            'spp': 0,
-            'suppressSpellcheck': 'false'
-        }
-        relevant_keys = {
-            '__dst': 'dest',
-            '__region': 'regions',
-            '__cpns': 'couponsGeo',
-            '__pricemargin': 'pricemarginCoeff',
-        }
-
-        for cookie_key in cookies.keys():
-            key = relevant_keys.get(cookie_key, None)
-            if key is not None:
-                value = cookies[cookie_key].strip('_ —-')
-                if key in {'dest', 'couponsGeo', 'regions'}:
-                    value = ','.join(cookies[cookie_key].split('_'))
-                query_keys[key] = value
-
-        if queries:
-            query_keys.update(queries)
-
-        url = url.format_map(query_keys)
-        return url
-
     @classmethod
     async def get_place_on_page(
         cls: 'WbProduct',
@@ -199,17 +155,21 @@ class WbProduct:
         sorting: str = 'popular',
         resultset: str = 'catalog'
     ):
+        """Get placement on the page.
+
+        #### Args:
+        - product_id: Product article.
+        - query: Search query.
+        """
         page = 0
         amount = 0
-        cookies = await get_wb_cookies(cls.base_url)
-        url = await WbProduct.update_url(
-            PAGINATION_PAGE, cookies, {'query': query}
-        )
+        cooker = Cooker(cls.base_url)
+        url = await cooker.update_url(PAGINATION_PAGE, query)
 
         while True:
             query_url = url + f'&{page=}' if page else url
-
             data = await MarketRequest.GET(url=query_url)
+            
             try:
                 data = data['data']['products']
             except (KeyError, TypeError) as err:
@@ -228,7 +188,7 @@ class WbProduct:
                         'Цена продажи': product['salePriceU'] / 100,
                         'Страница': page + 1,
                         'Место': place,
-                        'rank': (page + 1) * place
+                        'rank': (page + 1) * 100 + place
                     }
                 # print(product['id'], product['name'])
                 # print((page+1)*place)
@@ -241,14 +201,14 @@ async def test():
     s = time.time()
     # p = WbProduct(124_256_512)
     # assert await p.get_product_name() == 'Конструктор в чупсе "Полиция"'
-    print('\nКлючевое слово: zarina')
-    print('ID Вашего продукта: 126022903')
+    # print('\nКлючевое слово: zarina')
+    # print('ID Вашего продукта: 126022903')
     # d = await WbProduct.get_place_on_page(126022903, 'zarina')#, 'pricedown')
     # print(*d.items(), sep='\n')
-    # print('\nКлючевое слово: Омега 3')
-    # print('ID Вашего продукта: 37260674')
+    print('\nКлючевое слово: Омега 3')
+    print('ID Вашего продукта: 37260674')
     d = await WbProduct.get_place_on_page(37260674, 'Омега 3', 'priceup')
-    print(*d.items(), sep='\n')
+    print(d, sep='\n')
     print('Время запроса: ', time.time() - s)
 
 

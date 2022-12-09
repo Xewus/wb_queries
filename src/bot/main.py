@@ -15,7 +15,7 @@ logging.basic(level=logging.INFO)
 
 
 bot = Bot(
-    token=bot_config.bot_token.get_secret_value(),
+    token=bot_config.TOKEN.get_secret_value(),
     parse_mode='HTML'
 )
 disp = Dispatcher(bot)
