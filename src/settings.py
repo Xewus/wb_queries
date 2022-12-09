@@ -1,4 +1,4 @@
-from pydantic import BaseSettings, SecretStr, HttpUrl
+from pydantic import BaseSettings, HttpUrl, SecretStr
 
 
 class Settings(BaseSettings):
@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = '.env'
         env_file_encoding = 'utf-8'
+
 
 class BotSettings(Settings):
     TOKEN: SecretStr

@@ -1,12 +1,12 @@
 import asyncio
 import sys
-import time
 from pathlib import Path
-from pprint import pprint
 from typing import Any
 
 root = Path(__file__).parent.parent.parent.resolve()
 sys.path.append(str(root))
+
+from time import time
 
 from src.core.requestsing import MarketRequest
 from src.markets.selen import Cooker
@@ -14,6 +14,7 @@ from src.settings import wb_config
 
 PRODUCT_JSON_CARD = wb_config.PRODUCT_JSON_CARD
 PAGINATION_PAGE = wb_config.PAGINATION_PAGE
+
 
 class WbProduct:
     """A product from the market `Wildberries`.
@@ -93,6 +94,7 @@ class WbProduct:
     }
     """
     base_url = 'https://www.wildberries.ru/'
+    start = time()
 
     def __init__(self, id: int | str) -> None:
         if isinstance(id, str) and not id.isdecimal():
@@ -150,7 +152,7 @@ class WbProduct:
     @classmethod
     async def get_place_on_page(
         cls: 'WbProduct',
-        product_id: int,
+        product_id: int | str,
         query: str,
         sorting: str = 'popular',
         resultset: str = 'catalog'
@@ -160,45 +162,48 @@ class WbProduct:
         #### Args:
         - product_id: Product article.
         - query: Search query.
-    
+
         #### Returns:
         - dict | int: Description of the position of the goods or
             the number of products viewed
         """
-        page = 0
+        page = 1
         amount = 0
         cooker = Cooker(cls.base_url)
         url = await cooker.update_url(PAGINATION_PAGE, query)
 
         while True:
-            query_url = url + f'&{page=}' if page else url
+            query_url = url + f'&{page=}' if page > 1 else url
             data = await MarketRequest.GET(url=query_url)
-            
+
             try:
                 data = data['data']['products']
             except (KeyError, TypeError) as err:
+                print('Потрачено времени: ', time() - cls.start)
                 print(err)
+                print(data)
                 return amount
 
             if not data:
+                print('Потрачено времени: ', time() - cls.start)
                 return amount
 
             for place, product in enumerate(data, 1):
                 if product['id'] == product_id:
+                    print('Потрачено времени: ', time() - cls.start)
                     return {
                         'product_id': product_id,
-                        'Название': product['name'],
-                        'Начальная цена': product['priceU'] / 100,
-                        'Цена продажи': product['salePriceU'] / 100,
-                        'Страница': page + 1,
-                        'Место': place,
-                        'rank': (page + 1) * 100 + place
+                        'name': product['name'],
+                        'start_price': product['priceU'] / 100,
+                        'sale_price': product['salePriceU'] / 100,
+                        'page': page,
+                        'place': place,
+                        'rank': (page - 1) * 100 + place
                     }
-                # print(product['id'], product['name'])
-                # print((page+1)*place)
+                print(product['id'], product['name'], cls.counter_latency)
 
-            amount += len(data)
             page += 1
+            amount += len(data)
 
 
 async def test():

@@ -1,20 +1,14 @@
-import socket
-from functools import cache
-from pprint import pprint
-from time import sleep
-from urllib.parse import unquote
-
-from geopy.geocoders import Nominatim
 from selenium import webdriver
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-
 service = Service(executable_path=ChromeDriverManager().install())
 
-chrome_options = Options()
-chrome_options.add_argument("--headless")
+chrome_options = None
+# chrome_options = Options()
+# chrome_options.add_argument("--headless")
 
 
 class Cooker:
@@ -178,17 +172,22 @@ class Cooker:
         cookies = {cookie['name']: cookie['value'] for cookie in cookies}
         return cookies
 
-    async def update_url(self, url: str, query: str) -> str:
+    async def update_url(self, url: str, query: str) -> str | None:
         """Change the URL corresponding to the cookies and query.
 
         #### Args:
         - url (str): URL to change.
         - queries (str): Search query.
-    
+
         #### Returns:
         - str: Changed URL.
         """
-        cookies = await self.__get_wb_cookies()
+        try:
+            cookies = await self.__get_wb_cookies()
+        except WebDriverException as exc:
+            print(exc)
+            return
+
         query_keys = {
             'appType': 1,
             'couponsGeo': '12,7,3,6,5,18,21',

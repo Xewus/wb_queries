@@ -13,6 +13,7 @@ sys.path.append(str(root))
 
 class MarketRequest:
     timeout = 3
+
     async def __to_dict(response: ClientResponse) -> dict | None:
         try:
             response = await response.json(content_type=response.content_type)
@@ -20,7 +21,7 @@ class MarketRequest:
             if not isinstance(response, dict):
                 response = await response.json(content_type='text/plain')
             return response
-            
+
         except ContentTypeError as err:
             print(err)
             return
@@ -40,7 +41,9 @@ class MarketRequest:
         """
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(url=url, timeout=cls.timeout) as response:
+                async with session.get(
+                    url=url, timeout=cls.timeout
+                ) as response:
                     if response.status != HTTPStatus.OK:
                         return
                     return await cls.__to_dict(response)
@@ -50,12 +53,16 @@ class MarketRequest:
             return
 
     @classmethod
-    async def __request_post(cls: 'MarketRequest', url: str, data: dict) -> dict | None:
+    async def __request_post(
+        cls: 'MarketRequest', url: str, data: dict
+    ) -> dict | None:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(url=url, data=data, timeout=cls.timeout) as response:
+                async with session.post(
+                    url=url, data=data, timeout=cls.timeout
+                ) as response:
                     if response.status != HTTPStatus.OK:
-                        return    
+                        return
                     return await cls.__to_dict(response)
 
         except (ClientConnectionError, ContentTypeError, TimeoutError) as err:
@@ -65,7 +72,9 @@ class MarketRequest:
     @classmethod
     async def GET(cls: 'MarketRequest', url: str) -> dict | None:
         return await cls.__request_get(url)
-    
+
     @classmethod
-    async def POST(cls: 'MarketRequest', url: str, data: dict = None) -> dict | None:
+    async def POST(
+        cls: 'MarketRequest', url: str, data: dict = None
+    ) -> dict | None:
         return await cls.__request_post(url, data)
