@@ -154,12 +154,16 @@ class WbProduct:
         query: str,
         sorting: str = 'popular',
         resultset: str = 'catalog'
-    ):
+    ) -> dict | int:
         """Get placement on the page.
 
         #### Args:
         - product_id: Product article.
         - query: Search query.
+    
+        #### Returns:
+        - dict | int: Description of the position of the goods or
+            the number of products viewed
         """
         page = 0
         amount = 0
