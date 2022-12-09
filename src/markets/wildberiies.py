@@ -178,7 +178,7 @@ class WbProduct:
                 data = data['data']['products']
             except (KeyError, TypeError) as err:
                 print(err)
-                return
+                return amount
 
             if not data:
                 return amount
