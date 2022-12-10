@@ -1,16 +1,15 @@
 import asyncio
 import sys
 from pathlib import Path
+from pprint import pprint
 from typing import Any
 
 root = Path(__file__).parent.parent.parent.resolve()
 sys.path.append(str(root))
 
-from time import time
-
 from src.core.requestsing import MarketRequest
-from src.markets.links import PAGINATION_PAGE, PRODUCT_JSON_CARD
-
+from src.core.utils import url_with_data
+from src.core.wb_links import PRODUCT_JSON_CARD
 
 
 class WbProduct:
@@ -96,7 +95,6 @@ class WbProduct:
         if isinstance(id, str) and not id.isdecimal():
             raise ValueError('`~id %s` is not a number')
         self.id = id
-        self.start = time()
 
     async def __set_params(self) -> None:
         """Get the product params from a remote server and set into parameter.
@@ -150,12 +148,16 @@ class WbProduct:
         self,
         query: str,
         sorting: str = 'popular',
-        resultset: str = 'catalog'
+        resultset: str = 'catalog',
+        address: str = 'Москва'
     ) -> dict | int:
         """Get placement on the page.
 
         #### Args:
         - query: Search query.
+        - sorting (str): Sorting products.
+        - resultset (str): Type of returned JSON.
+        - address (str): Address to search for.
 
         #### Returns:
         - dict | int: Description of the position of the goods or
@@ -163,14 +165,8 @@ class WbProduct:
         """
         page = 1
         amount = 0
-
-        g = {
-            'dest': '-1216601,-337422,-1114902,-1198055',
-            'query': query,
-            'resultset':resultset,
-            'sort': sorting
-        }
-        url = PAGINATION_PAGE.format_map(g)
+        url, address = await url_with_data(query, sorting, resultset, address)
+        
         while True:
             query_url = url + f'&{page=}' if page > 1 else url
             data = await MarketRequest.GET(url=query_url)
@@ -178,48 +174,42 @@ class WbProduct:
             try:
                 data = data['data']['products']
             except (KeyError, TypeError) as err:
-                print('Потрачено времени: ', time() - self.start)
                 print(err)
-                print(data)
                 return amount
 
             if not data:
-                print('Потрачено времени: ', time() - self.start)
                 return amount
 
             for place, product in enumerate(data, 1):
                 if product['id'] == self.id:
-                    print('Потрачено времени: ', time() - self.start)
                     return {
                         'product_id': self.id,
+                        'address': address,
                         'name': product['name'],
                         'start_price': product['priceU'] / 100,
                         'sale_price': product['salePriceU'] / 100,
                         'page': page,
                         'place': place,
-                        'rank': (page - 1) * 100 + place,
-                        'time': int(time() - self.start)
+                        'rank': (page - 1) * 100 + place
                     }
+                print(product['id'], product['name'])
 
             page += 1
             amount += len(data)
 
 
 async def test():
-    s = time()
-    # p = WbProduct(124_256_512)
-    # assert await p.get_product_name() == 'Конструктор в чупсе "Полиция"'
-    # print('\nКлючевое слово: zarina')
-    # print('ID Вашего продукта: 126022903')
-    # d = await WbProduct.get_place_on_page(126022903, 'zarina')#, 'pricedown')
-    # print(*d.items(), sep='\n')
+    p = WbProduct(124_256_512)
+    assert await p.get_product_name() == 'Конструктор в чупсе "Полиция"'
+    print('\nКлючевое слово: zarina')
+    print('ID Вашего продукта: 126022903')
+    d = await WbProduct(126022903).get_place_on_page('zarina', 'priceup')
+    pprint(d)
     print('\nКлючевое слово: Омега 3')
     print('ID Вашего продукта: 37260674')
-    d = await WbProduct(37260674).get_place_on_page('Омега 3', 'priceup')
-    print(d, sep='\n')
-    print('Время запроса: ', time() - s)
+    d = await WbProduct(37260674).get_place_on_page('Омега 3', address='псков')
+    pprint(d)
 
 
 if __name__ == '__main__':
-    # 37260674 Омега 3
     asyncio.run(test())
