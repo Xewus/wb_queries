@@ -9,10 +9,10 @@ from src.bot import texts
 from src.core.enums import Commands
 from src.core.utils import get_geo_coord
 from src.markets.wildberiies import WbProduct
-from src.settings import bot_config
+from src.settings import BOT_TOKEN
 
 bot = Bot(
-    token=bot_config.TOKEN.get_secret_value(),
+    token=BOT_TOKEN,
     parse_mode='HTML'
 )
 

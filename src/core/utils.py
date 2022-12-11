@@ -64,7 +64,6 @@ async def url_with_data(
     cookies = await MarketRequest.cookies(
         GEO_PARAMS, 'POST', headers=headers, data=geo_data
     )
-    print(cookies)
 
     data_to_url = {
         'couponsGeo': '12,7,3,6,5,18,21',
