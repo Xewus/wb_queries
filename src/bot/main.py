@@ -50,10 +50,9 @@ async def get_article(msg: Message, state: FSMContext):
     name = await WbProduct(article).get_product_name()
 
     if name is None:
-        state.finish()
+        await state.finish()
         return await msg.answer(
-            texts.ANSWER_NOT_FOUND % ('', 0, msg.text),
-            reply_markup=main_kb
+            texts.NOT_EXIST, reply_markup=main_kb
         )
 
     await state.update_data(article=article)

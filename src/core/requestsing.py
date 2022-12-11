@@ -13,7 +13,8 @@ expected_errors = (
 class MarketRequest:
     timeout = 3
 
-    async def __to_dict(response: ClientResponse) -> dict | None:
+    @classmethod
+    async def __to_dict(cls, response: ClientResponse) -> dict | None:
         """Return responsse body as dict.
 
         #### Args:
@@ -29,13 +30,12 @@ class MarketRequest:
                 response = await response.json(content_type='text/plain')
             return response
 
-        except ContentTypeError as err:
-            print(err)
-            return
+        except ContentTypeError:
+            pass
 
     @classmethod
     async def GET(
-        cls: 'MarketRequest', url: str, as_dict: bool = True
+        cls, url: str, as_dict: bool = True
     ) -> ClientResponse | dict | None:
         """Execute an http `GET` request to a remote server.
 
@@ -58,13 +58,12 @@ class MarketRequest:
                         return await cls.__to_dict(response)
                     return response
 
-        except expected_errors as err:
-            print(err)
-            return
+        except expected_errors:
+            pass
 
     @classmethod
     async def POST(
-        cls: 'MarketRequest', url: str, as_dict: bool = True, **kw
+        cls, url: str, as_dict: bool = True, **kw
     ) -> ClientResponse | dict | None:
         """Execute an http `POST` request to a remote server.
 
@@ -88,13 +87,12 @@ class MarketRequest:
                         return await cls.__to_dict(response)
                     return response
 
-        except expected_errors as err:
-            print(err)
-            return
+        except expected_errors:
+            pass
 
     @classmethod
     async def cookies(
-        cls: 'MarketRequest', url: str, method: str, **kwargs
+        cls, url: str, method: str, **kwargs
     ) -> SimpleCookie | dict:
         """Get only cookie from request to a remote server.
 
@@ -113,10 +111,11 @@ class MarketRequest:
                         request = session.get
                     case 'POST':
                         request = session.post
+                    case _:
+                        return {}
 
                 async with request(url=url, **kwargs) as response:
                     return response.cookies
 
         except expected_errors as err:
-            print(err)
             return {}

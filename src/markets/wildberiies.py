@@ -105,7 +105,7 @@ class WbProduct:
             try:
                 self.params = data['data']['products']
             except KeyError as err:
-                print(err)
+                pass
 
     async def __get_product_param(self, key: str) -> Any | None:
         """Get the product parameter.
@@ -173,8 +173,7 @@ class WbProduct:
 
             try:
                 data = data['data']['products']
-            except (KeyError, TypeError) as err:
-                print(err)
+            except (KeyError, TypeError):
                 return amount
 
             if not data:
