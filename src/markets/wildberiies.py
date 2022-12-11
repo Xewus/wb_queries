@@ -7,9 +7,9 @@ from typing import Any
 root = Path(__file__).parent.parent.parent.resolve()
 sys.path.append(str(root))
 
-from src.core.requestsing import MarketRequest
-from src.core.utils import url_with_data
-from src.core.wb_links import PRODUCT_JSON_CARD
+from src.core.requestsing import MarketRequest   # noqa
+from src.core.utils import url_with_data         # noqa
+from src.core.wb_links import PRODUCT_JSON_CARD  # noqa
 
 
 class WbProduct:
@@ -166,7 +166,7 @@ class WbProduct:
         page = 1
         amount = 0
         url, address = await url_with_data(query, sorting, resultset, address)
-        
+
         while True:
             query_url = url + f'&{page=}' if page > 1 else url
             data = await MarketRequest.GET(url=query_url)
@@ -192,7 +192,6 @@ class WbProduct:
                         'place': place,
                         'rank': (page - 1) * 100 + place
                     }
-                print(product['id'], product['name'])
 
             page += 1
             amount += len(data)

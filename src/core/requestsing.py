@@ -1,4 +1,3 @@
-import sys
 from asyncio import TimeoutError
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -92,7 +91,7 @@ class MarketRequest:
         except expected_errors as err:
             print(err)
             return
- 
+
     @classmethod
     async def cookies(
         cls: 'MarketRequest', url: str, method: str, **kwargs
@@ -121,4 +120,3 @@ class MarketRequest:
         except expected_errors as err:
             print(err)
             return {}
-    

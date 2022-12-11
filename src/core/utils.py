@@ -10,7 +10,7 @@ from src.core.wb_links import GEO_PARAMS, PAGINATION_PAGE
 @AsyncLRU(maxsize=128)
 async def get_geo_coord(geoname) -> tuple[str, float, float]:
     """Get correct address, latitude, longitude.
-    
+
     #### Args:
     - geoname (str): Name of geolocation.
 
@@ -42,7 +42,7 @@ async def url_with_data(
     query: str, sorting: str, resultset: str, address: str
 ) -> tuple[str, str]:
     """Fill in the url with data.
-    
+
     #### Args:
     - query (str): Search query.
     - sorting (str): Sorting products.
@@ -50,7 +50,7 @@ async def url_with_data(
     - address (str): Address to search for.
 
     #### Returns:
-    - tuple [str, str]: (URL, address). 
+    - tuple [str, str]: (URL, address).
     """
     address, lat, long = await get_geo_coord(address)
 
@@ -59,22 +59,29 @@ async def url_with_data(
         'latitude': lat,
         'longitude': long,
     }
-    headers = {'x-requested-with': 'XMLHttpRequest' }
+    headers = {'x-requested-with': 'XMLHttpRequest'}
 
     cookies = await MarketRequest.cookies(
         GEO_PARAMS, 'POST', headers=headers, data=geo_data
     )
+    print(cookies)
 
     data_to_url = {
-        'sort': sorting,
+        'couponsGeo': '12,7,3,6,5,18,21',
+        'dest': '-1216601,-337422,-1114902,-1198055',
+        'query': query,
+        'regions': '80,64,83,4,38,33,70,82,69,68,86,30,40,48,1,22,66,31',
         'resultset': resultset,
-        'query': query
+        'sort': sorting
     }
 
     for key, value in cookies.items():
-        if key == '__dst':
-            data_to_url['dest'] = ','.join(value.value.split('_'))
-        if key == '__region':
-            data_to_url['regions'] = ','.join(value.value.split('_'))
-    
+        match key:
+            case '__dst':
+                data_to_url['dest'] = ','.join(value.value.split('_'))
+            case '__region':
+                data_to_url['regions'] = ','.join(value.value.split('_'))
+            case '__cpns':
+                data_to_url['couponsGeo'] = ','.join(value.value.split('_'))
+
     return PAGINATION_PAGE.format_map(data_to_url), address

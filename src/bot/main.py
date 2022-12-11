@@ -1,69 +1,83 @@
-import logging
-
 from aiogram import Bot, Dispatcher, executor
 from aiogram.dispatcher import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.dispatcher.filters import Text
+from aiogram.types import Message, ReplyKeyboardRemove
 
-from src.bot.keyboards import start_kb
+from src.bot.keyboards import cancel_kb, main_kb
 from src.bot.states import UserState, storage
-from src.bot.texts import (TXT_ANSWER_NOT_FOUND, TXT_ANSWER_WITH_DATA,
-                           TXT_ERROR, TXT_ERROR_QUERY, TXT_HELP,
-                           TXT_INPUT_SEARCH, TXT_START)
-from src.core.enums import CallBackData, Commands
+from src.bot import texts
+from src.core.enums import Commands
 from src.core.utils import get_geo_coord
 from src.markets.wildberiies import WbProduct
 from src.settings import bot_config
-
-# bot_configure logging
-logging.basicConfig(level=logging.INFO)
 
 bot = Bot(
     token=bot_config.TOKEN.get_secret_value(),
     parse_mode='HTML'
 )
+
 disp = Dispatcher(bot, storage=storage)
 
 
+@disp.message_handler(commands=[Commands.START])
+async def cmd_start(msg: Message):
+    await msg.answer(texts.START)
+    await msg.answer(texts.DESCRIPTION, reply_markup=main_kb)
 
-@disp.message_handler(commands=[Commands.SEARCH])
-async def search_command(msg: Message):
-    await msg.answer('Введите артикул')
+
+@disp.message_handler(
+    Text(equals=Commands.CANCEL.value),
+    state=UserState.all_states
+)
+async def cmd_cansel(msg: Message, state: FSMContext):
+    await state.finish()
+    await msg.reply(texts.CANCEL, reply_markup=main_kb)
+
+
+@disp.message_handler(Text(equals=Commands.SEARCH.value))
+async def cmd_search(msg: Message):
+    await msg.answer(texts.INPUT_ARTICLE, reply_markup=ReplyKeyboardRemove())
     await UserState.article.set()
+
 
 @disp.message_handler(state=UserState.article)
 async def get_article(msg: Message, state: FSMContext):
     if not msg.text.isdecimal():
-        await msg.answer(TXT_ERROR_QUERY)
-        return await msg.answer('Введите артикул')
-    
+        await msg.answer(texts.ERROR_QUERY, reply_markup=cancel_kb)
+        return await msg.answer(texts.INPUT_ARTICLE)
+
     article = int(msg.text)
     name = await WbProduct(article).get_product_name()
 
     if name is None:
-        await state.finish()
-        return await msg.answer(TXT_ANSWER_NOT_FOUND % ('', 0, msg.text))
+        state.finish()
+        return await msg.answer(
+            texts.ANSWER_NOT_FOUND % ('', 0, msg.text),
+            reply_markup=main_kb
+        )
 
-    await state.update_data(article= article)
-    await msg.answer(f"{name}\nОтлично! Теперь введите запрос.")
+    await state.update_data(article=article)
+    await msg.reply(name, reply_markup=cancel_kb)
+    await msg.answer(texts.INPUT_QUERY)
     await UserState.next()
 
+
 @disp.message_handler(state=UserState.query)
-async def get_article(msg: Message, state: FSMContext):
-    await state.update_data(query = msg.text)
-    await msg.answer("Отлично! Теперь введите ваш адрес.")
+async def get_query(msg: Message, state: FSMContext):
+    await state.update_data(query=msg.text)
+    await msg.answer(texts.INPUT_ADDRESS, reply_markup=cancel_kb)
     await UserState.address.set()
 
+
 @disp.message_handler(state=UserState.address)
-async def get_article(msg: Message, state: FSMContext):
+async def get_addres(msg: Message, state: FSMContext):
     address, *_ = await get_geo_coord(msg.text)
     await msg.answer(address)
-    await state.update_data(address = msg.text)
+    await state.update_data(address=msg.text)
     data = await state.get_data()
 
     await msg.answer(
-        f'Артикул: {data["article"]}\n'
-        f'Запрос: {data["query"]}\n'
-        f'Адрес:  {address}'
+        texts.ALL_DATA % (data["article"], data["query"], address)
     )
 
     result = await WbProduct(
@@ -74,43 +88,22 @@ async def get_article(msg: Message, state: FSMContext):
     )
 
     if isinstance(result, dict):
-        text = TXT_ANSWER_WITH_DATA.format_map(result)
+        text = texts.ANSWER_WITH_DATA.format_map(result)
     elif isinstance(result, int):
-        text = TXT_ANSWER_NOT_FOUND % (data['query'], result, data['article'])
+        text = texts.ANSWER_NOT_FOUND % (
+            data['query'], result, data['article']
+        )
     else:
-        text = TXT_ERROR
+        text = texts.ERROR
 
-    await msg.answer(text)
+    await msg.answer(text, reply_markup=main_kb)
     await state.finish()
 
 
-
-
-
-
-
-@disp.callback_query_handler(lambda c: c.data == CallBackData.OFFCOURSE)
-async def callback_of_course(query: CallbackQuery):
-    await bot.answer_callback_query(query.id)
-    await bot.send_message(
-        query.from_user.id,
-        text=TXT_INPUT_SEARCH
-    )
-
-@disp.message_handler(commands=[Commands.START])
-async def start_command(message: Message):
-    await message.answer(TXT_START, reply_markup=start_kb)
-
-
-@disp.message_handler(commands=[Commands.HELP])
-async def help_command(msg: Message):
-    await msg.answer(TXT_HELP.format_map(Commands.as_dict()))
-
-
-# @disp.message_handler()
-# async def search_message(msg: Message):
-
-    # await msg.answer(text)
+@disp.message_handler()
+async def some_message(msg: Message):
+    await msg.answer(texts.DEFAULT)
+    await msg.answer(texts.DESCRIPTION, reply_markup=main_kb)
 
 
 def run_bot():
