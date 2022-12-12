@@ -5,9 +5,7 @@ from http.cookies import SimpleCookie
 from aiohttp import ClientResponse, ClientSession
 from aiohttp.client_exceptions import ClientConnectionError, ContentTypeError
 
-expected_errors = (
-    ClientConnectionError, ContentTypeError, TimeoutError, TypeError
-)
+from src.core.logging import logger
 
 
 class MarketRequest:
@@ -31,7 +29,7 @@ class MarketRequest:
             return response
 
         except ContentTypeError:
-            pass
+            logger.error('Failed to format: %s' % response.content_type)
 
     @classmethod
     async def GET(
@@ -58,8 +56,8 @@ class MarketRequest:
                         return await cls.__to_dict(response)
                     return response
 
-        except expected_errors:
-            pass
+        except (ClientConnectionError, TimeoutError) as err:
+            logger.error('Connection %s to: % s' % (err, url))
 
     @classmethod
     async def POST(
@@ -87,8 +85,8 @@ class MarketRequest:
                         return await cls.__to_dict(response)
                     return response
 
-        except expected_errors:
-            pass
+        except (ClientConnectionError, TimeoutError) as err:
+            logger.error('Connection %s to: % s' % (err, url))
 
     @classmethod
     async def cookies(
@@ -104,18 +102,13 @@ class MarketRequest:
         #### Returns:
         - SimpleCookie | dict: Empty dict if not cookie else SimpleCookie.
         """
-        try:
-            async with ClientSession() as session:
-                match method:
-                    case 'GET':
-                        request = session.get
-                    case 'POST':
-                        request = session.post
-                    case _:
-                        return {}
+        match method:
+            case 'GET':
+                request = cls.GET
+            case 'POST':
+                request = cls.POST
+            case _:
+                return {}
 
-                async with request(url=url, **kwargs) as response:
-                    return response.cookies
-
-        except expected_errors:
-            return {}
+        response = await request(url=url, as_dict=False, **kwargs)
+        return response.cookies

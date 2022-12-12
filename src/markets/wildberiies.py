@@ -7,6 +7,7 @@ from typing import Any
 root = Path(__file__).parent.parent.parent.resolve()
 sys.path.append(str(root))
 
+from src.core.logging import logger  # noqa
 from src.core.requestsing import MarketRequest  # noqa
 from src.core.utils import get_params_for_url  # noqa
 from src.core.wb_links import WB_PRODUCT_JSON_CARD_URL  # noqa
@@ -33,7 +34,7 @@ class WbProduct:
             try:
                 self.params = data['data']['products']
             except KeyError:
-                pass
+                logger.error('Error with article: %d' % self.id)
 
     async def __get_product_param(self, key: str) -> Any | None:
         """Get the product parameter.
@@ -94,6 +95,7 @@ class WbProduct:
         try:
             return data['data']['total']
         except (KeyError, TypeError):
+            logger.error('Incorrect response for: %s' % url)
             return 0
 
     async def __find_place(self, url, page: int, dataset: list) -> None:
@@ -109,6 +111,7 @@ class WbProduct:
         try:
             data = data['data']['products']
         except (KeyError, TypeError):
+            logger.error('Incorrect response for: %s' % url)
             return
 
         for place, product in enumerate(data, 1):
@@ -134,6 +137,11 @@ class WbProduct:
         #### Returns:
         - dict[str, int]: Description of the position of the product.
         """
+        await logger.info(
+            'Got request with article: %d, query: %s, address: %s' % (
+                self.id, query, address
+            )
+        )
         amount = await self.get_amount_by_query(query, address)
         last_page = min(ceil(amount // 100), 60)
         url_params, address = await get_params_for_url(

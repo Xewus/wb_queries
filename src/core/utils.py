@@ -3,6 +3,7 @@ from geopy.adapters import AioHTTPAdapter
 from geopy.exc import GeocoderTimedOut
 from geopy.geocoders import Nominatim
 
+from src.core.logging import logger
 from src.core.requestsing import MarketRequest
 from src.core.wb_links import WB_GEO_PARAMS_URL, WB_PARAMS_FOR_URL
 
@@ -32,7 +33,7 @@ async def get_geo_coord(geoname) -> tuple[str, float, float]:
                     location.longitude
                 )
     except GeocoderTimedOut:
-        pass
+        logger.info('No connection to Nominatim')
 
     return 'Москва', 55.7504461, 37.6174943
 
