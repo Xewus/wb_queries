@@ -1,8 +1,12 @@
-PRODUCT_JSON_CARD = 'https://card.wb.ru/cards/detail?nm=%s'
+WB_PRODUCT_JSON_CARD_URL = 'https://card.wb.ru/cards/detail?nm=%s'
 
-GEO_PARAMS = 'https://www.wildberries.ru/webapi/geo/saveprefereduserloc'
+WB_GEO_PARAMS_URL = 'https://www.wildberries.ru/webapi/geo/saveprefereduserloc'
 
-PAGINATION_PAGE = """https://search.wb.ru/exactmatch/ru/common/v4/search?
+WB_PRODUCTS_PAGINATION_URL = 'https://search.wb.ru/exactmatch/ru/common/v4/search'
+
+WB_PRODUCTS_AMOUNT_BY_QUERY_URL = 'https://search.wb.ru/exactmatch/ru/male/v4/search'
+
+WB_PARAMS_FOR_URL = """?
 appType=1&
 couponsGeo={couponsGeo}&
 curr=rub&
@@ -15,6 +19,5 @@ query={query}&
 reg=0&
 regions={regions}&
 resultset={resultset}&
-sort={sort}&
 spp=0&
 suppressSpellcheck=false""".replace('\n', '')

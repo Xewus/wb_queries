@@ -3,9 +3,9 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.types import Message, ReplyKeyboardRemove
 
+from src.bot import texts
 from src.bot.keyboards import cancel_kb, main_kb
 from src.bot.states import UserState, storage
-from src.bot import texts
 from src.core.enums import Commands
 from src.core.utils import get_geo_coord
 from src.markets.wildberiies import WbProduct
@@ -86,16 +86,10 @@ async def get_addres(msg: Message, state: FSMContext):
         address=data['address']
     )
 
-    if isinstance(result, dict):
-        text = texts.ANSWER_WITH_DATA.format_map(result)
-    elif isinstance(result, int):
-        text = texts.ANSWER_NOT_FOUND % (
-            data['query'], result, data['article']
-        )
-    else:
-        text = texts.ERROR
-
-    await msg.answer(text, reply_markup=main_kb)
+    await msg.answer(
+        texts.ANSWER_WITH_DATA.format_map(result),
+        reply_markup=main_kb
+    )
     await state.finish()
 
 

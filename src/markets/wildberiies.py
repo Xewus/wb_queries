@@ -1,93 +1,21 @@
 import asyncio
 import sys
 from pathlib import Path
-from pprint import pprint
 from typing import Any
+from math import ceil
 
 root = Path(__file__).parent.parent.parent.resolve()
 sys.path.append(str(root))
 
-from src.core.requestsing import MarketRequest   # noqa
-from src.core.utils import url_with_data         # noqa
-from src.core.wb_links import PRODUCT_JSON_CARD  # noqa
+from src.core.requestsing import MarketRequest                  # noqa
+from src.core.utils import get_params_for_url                   # noqa
+from src.core.wb_links import (WB_PRODUCT_JSON_CARD_URL,        # noqa
+                               WB_PRODUCTS_AMOUNT_BY_QUERY_URL, # noqa
+                               WB_PRODUCTS_PAGINATION_URL)      # noqa
 
 
 class WbProduct:
     """A product from the market `Wildberries`.
-
-    #### Example JSON:
-    {
-        'data': {
-            'products': [
-                {
-                    'averagePrice': 0,
-                    'brand': 'Heine',
-                    'brandId': 423,
-                    'colors': [
-                        {
-                            'id': 16777215,
-                            'name': 'белый'
-                        }
-                    ],
-                    'diffPrice': False,
-                    'feedbacks': 0,
-                    'id': 375,
-                    'kindId': 2,
-                    'name': 'Пуловер',
-                    'pics': 1,
-                    'priceU': 252000,
-                    'promotions': [],
-                    'rating': 0,
-                    'root': 60197,
-                    'sale': 0,
-                    'salePriceU': 252000,
-                    'siteBrandId': 690,
-                    'sizes': [
-                        {
-                            'name': '42',
-                            'optionId': 141670,
-                            'origName': '34',
-                            'rank': 6401,
-                            'sign': 'SQnbgvoN4u0Ei/U9P8cUef1DBXU=',
-                            'stocks': []
-                        },
-                        {
-                            'name': '44',
-                            'optionId': 197135,
-                            'origName': '36/38',
-                            'rank': 6801,
-                            'sign': '4pzLGvXOKGQLUnq9YpAjC01AlTU=',
-                            'stocks': []
-                        },
-                        {
-                            'name': '48',
-                            'optionId': 317376,
-                            'origName': '40/42',
-                            'rank': 7601,
-                            'sign': 'rFAYlnqLXy1UvXu/XTqJhMXKSm8=',
-                            'stocks': []
-                        },
-                        {
-                            'name': '52',
-                            'optionId': 426231,
-                            'origName': '44/46',
-                            'rank': 8301,
-                            'sign': 'Gr3bMOinAVBy8ZQIoaTwyeQ+wT4=',
-                            'stocks': []
-                        }
-                    ],
-                    'subjectId': 160,
-                    'subjectParentId': 1,
-                    'supplierId': 128
-                }
-            ]
-        },
-    'params': {
-        'curr': 'rub',
-        'version': 1
-    },
-    'state': 0
-    }
     """
     base_url = 'https://www.wildberries.ru/'
 
@@ -100,7 +28,7 @@ class WbProduct:
         """Get the product params from a remote server and set into parameter.
         """
         self.params = []
-        data = await MarketRequest.GET(PRODUCT_JSON_CARD % self.id)
+        data = await MarketRequest.GET(WB_PRODUCT_JSON_CARD_URL % self.id)
         if data:
             try:
                 self.params = data['data']['products']
@@ -144,69 +72,112 @@ class WbProduct:
         """
         return await self.__get_product_param('name')
 
+    @staticmethod
+    async def get_amount_by_query(query: str , address: str) -> int:
+        """Get the number of products according to the specified query.
+
+        #### Args:
+        - query (str): Search query.
+        - address (str): Address to search for.
+
+        #### Returns:
+        - int: Amount of products per search query.
+        """
+        url_params, _ = await get_params_for_url(
+            query,
+            resultset='filters',
+            address=address
+        )
+        url = WB_PRODUCTS_AMOUNT_BY_QUERY_URL + url_params
+        data = await MarketRequest.GET(url)
+
+        try:
+            return data['data']['total']
+        except (KeyError, TypeError):
+            return 0
+
+    async def __find_place(self, url, page: int, dataset: list) -> None:
+        """Find the product on the page.
+
+        #### Args:
+        - url (str): URL of the page to search for.
+        - page (int): Page number.
+        - dataset (list): List wiht results.
+        """
+        data = await MarketRequest.GET(url)
+        
+        try:
+            data = data['data']['products']
+        except (KeyError, TypeError):
+            return
+            
+        for place, product in enumerate(data, 1):
+            if product['id'] == self.id:
+                dataset[page] = place
+                return
+
     async def get_place_on_page(
         self,
         query: str,
-        sorting: str = 'popular',
+        sort: str = 'popular',
         resultset: str = 'catalog',
         address: str = 'Москва'
-    ) -> dict | int:
+    ) -> dict[str, int]:
         """Get placement on the page.
 
         #### Args:
         - query: Search query.
-        - sorting (str): Sorting products.
+        - sort (str): Sorting products.
         - resultset (str): Type of returned JSON.
         - address (str): Address to search for.
 
         #### Returns:
-        - dict | int: Description of the position of the goods or
-            the number of products viewed
+        - dict[str, int]: Description of the position of the product.
         """
-        page = 1
-        amount = 0
-        url, address = await url_with_data(query, sorting, resultset, address)
+        amount = await self.get_amount_by_query(query, address)
+        last_page = min(ceil(amount // 100), 60)
+        url_params, address = await get_params_for_url(
+            query, sort, resultset, address
+        )
+        url = WB_PRODUCTS_PAGINATION_URL + url_params
+        dataset = [None] * last_page
+        tasks = [None] * last_page
+        result = {
+            'amount': amount,
+            'page': 0,
+            'place': 0,
+            'rank': 0
+        }
 
-        while True:
+        for page in range(1, last_page + 1):
             query_url = url + f'&{page=}' if page > 1 else url
-            data = await MarketRequest.GET(url=query_url)
+            tasks[page - 1] = asyncio.create_task(
+                self.__find_place(query_url, page - 1, dataset)
+            )
 
-            try:
-                data = data['data']['products']
-            except (KeyError, TypeError):
-                return amount
-
-            if not data:
-                return amount
-
-            for place, product in enumerate(data, 1):
-                if product['id'] == self.id:
-                    return {
-                        'product_id': self.id,
-                        'address': address,
-                        'name': product['name'],
-                        'start_price': product['priceU'] / 100,
-                        'sale_price': product['salePriceU'] / 100,
-                        'page': page,
-                        'place': place,
-                        'rank': (page - 1) * 100 + place
-                    }
-
-            page += 1
-            amount += len(data)
+        for task in tasks:
+            await task
+        
+        for page, place in enumerate(dataset, 1):
+            if place:
+                result['page'] = page
+                result['place'] = place
+                result['rank'] = (page - 1) * 100 + place
+        
+        return result
 
 
 async def test():
     p = WbProduct(124_256_512)
     assert await p.get_product_name() == 'Конструктор в чупсе "Полиция"'
     print('\nКлючевое слово: zarina')
-    print('ID Вашего продукта: 126022903')
-    d = await WbProduct(126022903).get_place_on_page('zarina', 'priceup')
-    pprint(d)
+    print('ID продукта: 126022903')
+    d = await WbProduct(126022903).get_place_on_page('zarina')#, sort='pricedown')
+    print(*d.items(), sep='\n')
     print('\nКлючевое слово: Омега 3')
-    print('ID Вашего продукта: 37260674')
-    d = await WbProduct(37260674).get_place_on_page('Омега 3', address='псков')
-    pprint(d)
+    print('ID продукта: 37260674')
+    d = await WbProduct(37260674).get_place_on_page('Омега 3', address='Питер')
+    print(*d.items(), sep='\n')
 
 
 if __name__ == '__main__':

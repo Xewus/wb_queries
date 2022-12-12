@@ -4,7 +4,7 @@ from geopy.exc import GeocoderTimedOut
 from geopy.geocoders import Nominatim
 
 from src.core.requestsing import MarketRequest
-from src.core.wb_links import GEO_PARAMS, PAGINATION_PAGE
+from src.core.wb_links import WB_GEO_PARAMS_URL, WB_PARAMS_FOR_URL
 
 
 @AsyncLRU(maxsize=128)
@@ -38,14 +38,17 @@ async def get_geo_coord(geoname) -> tuple[str, float, float]:
 
 
 @AsyncTTL(time_to_live=60 * 10, maxsize=128)
-async def url_with_data(
-    query: str, sorting: str, resultset: str, address: str
+async def get_params_for_url(
+    query: str,
+    sort: str | None = None,
+    resultset: str = 'catalog',
+    address: str = 'Москва'
 ) -> tuple[str, str]:
-    """Fill in the url with data.
+    """Fill in the url params with data.
 
     #### Args:
     - query (str): Search query.
-    - sorting (str): Sorting products.
+    - sort (str): Sorting products.
     - resultset (str): Type of returned JSON.
     - address (str): Address to search for.
 
@@ -62,7 +65,7 @@ async def url_with_data(
     headers = {'x-requested-with': 'XMLHttpRequest'}
 
     cookies = await MarketRequest.cookies(
-        GEO_PARAMS, 'POST', headers=headers, data=geo_data
+        WB_GEO_PARAMS_URL, 'POST', headers=headers, data=geo_data
     )
 
     data_to_url = {
@@ -71,7 +74,7 @@ async def url_with_data(
         'query': query,
         'regions': '80,64,83,4,38,33,70,82,69,68,86,30,40,48,1,22,66,31',
         'resultset': resultset,
-        'sort': sorting
+        'sort': sort
     }
 
     for key, value in cookies.items():
@@ -83,4 +86,9 @@ async def url_with_data(
             case '__cpns':
                 data_to_url['couponsGeo'] = ','.join(value.value.split('_'))
 
-    return PAGINATION_PAGE.format_map(data_to_url), address
+    url_params = WB_PARAMS_FOR_URL.format_map(data_to_url)
+
+    if sort:
+        url_params = f'{url_params}&{sort=}'
+
+    return url_params, address
