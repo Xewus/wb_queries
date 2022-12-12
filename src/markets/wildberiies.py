@@ -22,8 +22,8 @@ class WbProduct:
 
     def __init__(self, id: int | str) -> None:
         if isinstance(id, str) and not id.isdecimal():
-            raise ValueError('`~id %s` is not a number')
-        self.id = id
+            raise ValueError('`id %s` is not a number')
+        self.id = int(id)
 
     async def __set_params(self) -> None:
         """Get the product params from a remote server and set into parameter.
