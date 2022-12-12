@@ -102,7 +102,7 @@ class WbProduct:
         #### Args:
         - url (str): URL of the page to search for.
         - page (int): Page number.
-        - dataset (list): List wiht results.
+        - dataset (list): List with results.
         """
         data = await MarketRequest.GET(url)
 
@@ -155,14 +155,14 @@ class WbProduct:
                 self.__find_place(query_url, page - 1, dataset)
             )
 
-        for task in tasks:
-            await task
+        await asyncio.gather(*tasks)
 
         for page, place in enumerate(dataset, 1):
             if place:
                 result['page'] = page
                 result['place'] = place
                 result['rank'] = (page - 1) * 100 + place
+                break
 
         return result
 
