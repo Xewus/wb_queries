@@ -117,5 +117,5 @@ class MarketRequest:
                 async with request(url=url, **kwargs) as response:
                     return response.cookies
 
-        except expected_errors as err:
+        except expected_errors:
             return {}

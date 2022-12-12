@@ -1,17 +1,17 @@
 import asyncio
 import sys
+from math import ceil
 from pathlib import Path
 from typing import Any
-from math import ceil
 
 root = Path(__file__).parent.parent.parent.resolve()
 sys.path.append(str(root))
 
-from src.core.requestsing import MarketRequest                  # noqa
-from src.core.utils import get_params_for_url                   # noqa
-from src.core.wb_links import (WB_PRODUCT_JSON_CARD_URL,        # noqa
-                               WB_PRODUCTS_AMOUNT_BY_QUERY_URL, # noqa
-                               WB_PRODUCTS_PAGINATION_URL)      # noqa
+from src.core.requestsing import MarketRequest  # noqa
+from src.core.utils import get_params_for_url  # noqa
+from src.core.wb_links import WB_PRODUCT_JSON_CARD_URL  # noqa
+from src.core.wb_links import WB_PRODUCTS_AMOUNT_BY_QUERY_URL  # noqa
+from src.core.wb_links import WB_PRODUCTS_PAGINATION_URL  # noqa
 
 
 class WbProduct:
@@ -32,7 +32,7 @@ class WbProduct:
         if data:
             try:
                 self.params = data['data']['products']
-            except KeyError as err:
+            except KeyError:
                 pass
 
     async def __get_product_param(self, key: str) -> Any | None:
@@ -73,7 +73,7 @@ class WbProduct:
         return await self.__get_product_param('name')
 
     @staticmethod
-    async def get_amount_by_query(query: str , address: str) -> int:
+    async def get_amount_by_query(query: str, address: str) -> int:
         """Get the number of products according to the specified query.
 
         #### Args:
@@ -105,12 +105,12 @@ class WbProduct:
         - dataset (list): List wiht results.
         """
         data = await MarketRequest.GET(url)
-        
+
         try:
             data = data['data']['products']
         except (KeyError, TypeError):
             return
-            
+
         for place, product in enumerate(data, 1):
             if product['id'] == self.id:
                 dataset[page] = place
@@ -157,26 +157,32 @@ class WbProduct:
 
         for task in tasks:
             await task
-        
+
         for page, place in enumerate(dataset, 1):
             if place:
                 result['page'] = page
                 result['place'] = place
                 result['rank'] = (page - 1) * 100 + place
-        
+
         return result
 
 
 async def test():
     p = WbProduct(124_256_512)
     assert await p.get_product_name() == 'Конструктор в чупсе "Полиция"'
+
     print('\nКлючевое слово: zarina')
     print('ID продукта: 126022903')
-    d = await WbProduct(126022903).get_place_on_page('zarina')#, sort='pricedown')
+    d = await WbProduct(
+        126022903
+    ).get_place_on_page('zarina', sort='pricedown')
     print(*d.items(), sep='\n')
+
     print('\nКлючевое слово: Омега 3')
     print('ID продукта: 37260674')
-    d = await WbProduct(37260674).get_place_on_page('Омега 3', address='Питер')
+    d = await WbProduct(
+        37260674
+    ).get_place_on_page('Омега 3', address='Питер')
     print(*d.items(), sep='\n')
 
 

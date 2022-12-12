@@ -1,6 +1,6 @@
-.env
+**/__pycache__
+.*
 .venv
 env
-venv
-.vscode
+venv/
 README.md
