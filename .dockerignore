@@ -1,4 +1,6 @@
 .env
 .venv
+env
+venv
 .vscode
 README.md
